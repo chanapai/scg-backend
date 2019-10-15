@@ -1,0 +1,56 @@
+// See https://github.com/dialogflow/dialogflow-fulfillment-nodejs
+// for Dialogflow fulfillment library docs, samples, and to report issues
+'use strict';
+ 
+const functions = require('firebase-functions');
+const {WebhookClient} = require('dialogflow-fulfillment');
+
+//initialise DB connection
+const admin = require('firebase-admin');
+admin.initializeApp({
+	credential: admin.credential.applicationDefault(),
+	databaseURL: 'ws://saveage-mleaao.firebaseio.com/',
+});
+
+
+process.env.DEBUG = 'dialogflow:debug';
+exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
+  	const agent = new WebhookClient({ request, response });
+  	console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
+  	console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
+
+  function show(agent) {
+    const numberKm = agent.parameters.numberKm;
+   
+    agent.add(`ขอบคุณสำหรับข้อมูล !`);
+
+    //return admin.database().ref('runInfo').once("value").then((snapshot) => {
+      //var averageKm = snapshot.child("runAvg").val();
+      //agent.add(`วันนี้คุณวิ่งไป ` + numberKm +` กิโลดมตร`);
+      //agent.add(`เฉลี่ยอยู่ที่ ` +averageKm);
+    //});
+  return admin.database().ref('runInfo').transaction((runInfo) => {
+
+    if(runInfo != null){
+        let oldAvg = runInfo.runAvg;
+        let oldTotalCount = runInfo.runTotal;
+        let newAvg = (oldAvg * oldTotalCount + numberKm) / (oldTotalCount +1);
+        runInfo.runAvg = newAvg;
+        runInfo.runTotal += 1;
+        agent.add(`เฉลี่ยอยู่ที่ `+newAvg.toFixed(2));
+    }
+    return runInfo;
+    }, function(error, isSuccess){
+        console.log(`upgrade average age transaction success`+isSuccess);
+    });
+    
+  }
+
+  // Run the proper function handler based on the matched Dialogflow intent name
+  let intentMap = new Map();
+  intentMap.set('AskKm', show);
+  agent.handleRequest(intentMap);
+});
+
+
+
