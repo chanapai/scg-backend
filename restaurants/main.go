@@ -14,6 +14,7 @@ func main() {
 		log.Fatalf("fatal error: %s", err)
 	}
 	r := &maps.NearbySearchRequest{
+		Type:     "restaurant",
 		// Bang sue latitude and longitude
 		Location: &maps.LatLng{Lat: 13.803071, Lng: 100.5369955},
 		// 10000 = 10km
